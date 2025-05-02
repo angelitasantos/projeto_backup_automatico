@@ -1,0 +1,1 @@
+Arquivos ignorados durante o cálculo do tamanho:
