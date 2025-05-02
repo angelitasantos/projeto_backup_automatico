@@ -1,0 +1,4 @@
+# Cada linha representa a exclusão de uma pasta
+DIVERSOS: EMAILS
+* : 2023
+* : 2024

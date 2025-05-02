@@ -1,0 +1,1 @@
+# Cada linha representa uma exclusão
