@@ -124,41 +124,90 @@ class BackupApp:
 
     def mostrar_pastas_disponiveis(self):
         self.pasta_especifica_frame = tk.Frame(self.root)
-        self.pasta_especifica_frame.pack(pady=10)
+        self.pasta_especifica_frame.pack(pady=10, padx=10, fill='both')
 
-        tk.Label(self.pasta_especifica_frame,
-                 text='Escolha uma pasta para backup:',
-                 font=('Arial', 10)).pack()
+        filtro_frame = tk.Frame(self.pasta_especifica_frame)
+        filtro_frame.pack(side='left', padx=10, fill='y')
 
-        self.pasta_listbox = tk.Listbox(self.pasta_especifica_frame,
-                                        font=('Arial', 10), height=6)
-        for nome in Config.PASTAS.keys():
-            self.pasta_listbox.insert(tk.END, nome)
-        self.pasta_listbox.pack(pady=10)
+        tk.Label(filtro_frame, text='Filtrar por nome:',
+                 font=('Arial', 10)).pack(anchor='w', pady=(1, 5))
+        self.filtro_entry = tk.Entry(filtro_frame,
+                                     font=('Arial', 10), width=35)
+        self.filtro_entry.pack()
+        self.filtro_entry.bind('<KeyRelease>', self.filtrar_lista)
 
-        tk.Button(self.pasta_especifica_frame, text='Confirmar',
+        lista_frame = tk.Frame(self.pasta_especifica_frame)
+        lista_frame.pack(side='left', padx=10)
+
+        tk.Label(lista_frame,
+                 text='Escolha uma ou mais pastas para backup:',
+                 font=('Arial', 10)).pack(anchor='w', pady=(0, 5))
+
+        self.pasta_listbox = tk.Listbox(
+            lista_frame,
+            font=('Arial', 10),
+            height=8,
+            width=40,
+            selectmode='extended'
+        )
+        self.pasta_listbox.pack()
+
+        # Armazena nomes completos
+        self.todos_os_nomes = list(Config.PASTAS.keys())
+        self.preencher_lista()
+
+        tk.Button(lista_frame,
+                  text='Confirmar',
                   command=self.confirmar_pasta,
                   font=('Arial', 10)).pack(pady=10)
 
+    def preencher_lista(self, filtro=''):
+        self.pasta_listbox.delete(0, tk.END)
+        for nome in self.todos_os_nomes:
+            if filtro.lower() in nome.lower():
+                self.pasta_listbox.insert(tk.END, nome)
+
+    def filtrar_lista(self, event=None):
+        filtro = self.filtro_entry.get()
+        self.preencher_lista(filtro)
+
     def confirmar_pasta(self):
-        selected_index = self.pasta_listbox.curselection()
-        if selected_index:
-            pasta_escolhida_nome = self.pasta_listbox.get(selected_index[0])
-            pasta_path = Config.PASTAS[pasta_escolhida_nome]
+        selected_indices = self.pasta_listbox.curselection()
+        if selected_indices:
+            pastas_escolhidas = [
+                self.pasta_listbox.get(i) for i in selected_indices]
+
+            pastas_dict = {
+                nome: Config.PASTAS[nome] for nome in pastas_escolhidas}
+
             self.loading_window = tk.Toplevel(self.root)
             self.loading_window.title('Aguarde')
             tk.Label(self.loading_window,
-                     text='Calculando tamanho da pasta...',
+                     text='Calculando tamanho das pastas...',
                      font=('Arial', 10)).pack(padx=20, pady=20)
             self.loading_window.grab_set()
             self.root.update_idletasks()
 
-            threading.Thread(target=self.verificar_tamanho_e_confirmar,
-                             args=(pasta_escolhida_nome, pasta_path)).start()
-
+            threading.Thread(
+                target=self.verificar_tamanho_e_confirmar_multiple,
+                args=(pastas_dict,)).start()
         else:
-            messagebox.showerror('Erro',
-                                 'Por favor, selecione uma pasta válida!')
+            messagebox.showerror(
+                'Erro', 'Por favor, selecione pelo menos uma pasta!')
+
+    def verificar_tamanho_e_confirmar_multiple(self, pastas_dict):
+        total_tamanho = 0
+        for nome, caminho in pastas_dict.items():
+            tamanho = self.calcular_tamanho_pasta(caminho)
+            print(f"{nome}: {tamanho / (1024 ** 2):.2f} MB")
+            total_tamanho += tamanho
+
+        self.loading_window.destroy()
+        messagebox.showinfo(
+            'Tamanho Total',
+            f'Tamanho total das pastas selecionadas: '
+            f'{total_tamanho / (1024 ** 2):.2f} MB'
+        )
 
     def verificar_tamanho_e_confirmar(self, nome, caminho):
         tamanho_pasta = self.calcular_tamanho_pasta(caminho)
