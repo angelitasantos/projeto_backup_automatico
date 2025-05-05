@@ -152,7 +152,6 @@ class BackupApp:
         )
         self.pasta_listbox.pack()
 
-        # Armazena nomes completos
         self.todos_os_nomes = list(Config.PASTAS.keys())
         self.preencher_lista()
 
